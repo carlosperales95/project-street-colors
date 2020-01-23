@@ -2,6 +2,8 @@ numpy
 pandas
 requests
 keras
-tensorflow-gpu
+tensorflow == 2.1.0
 matplotlib
 pillow
+sklearn
+pip
