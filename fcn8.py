@@ -20,42 +20,65 @@ tf.config.experimental.set_memory_growth(gpus[0], True)
 # np.set_printoptions(threshold=1000)
 
 image=[]
-in_image=[]
-out_image=[]
+in_train=[]
+in_test=[]
+in_valid=[]
+out_train=[]
+out_test=[]
+out_valid=[]
 img_width = 600
 img_height = 400
 
-for i in os.listdir('./small-dset/'):
+
+for i in os.listdir('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/training/images/'):
     # load the image
-    image.append(Image.open('./small-dset/'+i))
-
-    # summarize some details about the image
-    #print(image.format)
-    #print(image.mode)
-    #print(image.size)
-
-    # show the image
-    #image.show()
-
-    # crop image
-    #width,height=image.size
-    #im1=image.crop(((width-3264)/2,(height-1836)/2,(width-3264)/2+3264,(height-1836)/2+1836))
-    #im1.show()
+    in_train.append(Image.open('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/training/images/'+i))
 
     # resize image (nearest neighbors) and divide dataset into input and desired output images
-    if i[-3:] == 'jpg':
-        in_image.append(np.array(image[-1].resize((img_width,img_height),Image.NEAREST)))
-        #in_image[-1]=np.expand_dims(in_image[-1],axis=-1)
-        #in_image[-1]=np.transpose(in_image[-1], (3, 1, 0, 2))
-        in_image[-1] = np.transpose(in_image[-1], (1, 0, 2))
-    else:
-        out_image.append(np.array(image[-1].resize((img_width,img_height), Image.NEAREST)))
-        #out_image[-1] = np.expand_dims(out_image[-1], axis=-1)
-        #out_image[-1]=np.transpose(out_image[-1], (2, 1, 0))
-        out_image[-1] = np.transpose(out_image[-1], (1, 0))
+    in_train[-1] = np.array(in_train[-1].resize((img_width,img_height),Image.NEAREST))
+    in_train[-1] = np.transpose(in_train[-1], (1, 0, 2))
 
-# np.array(out_image[0])
-#out_image[-1].shape
+for i in os.listdir('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/training/labels/'):
+    # load the image
+    out_train.append(Image.open('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/training/labels/'+i))
+
+    # resize image (nearest neighbors) and divide dataset into input and desired output images
+    out_train[-1] = np.array(out_train[-1].resize((img_width,img_height), Image.NEAREST))
+    out_train[-1] = np.transpose(out_train[-1], (1, 0))
+
+for i in os.listdir('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/testing/images/'):
+    # load the image
+    in_test.append(Image.open('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/testing/images/'+i))
+
+    # resize image (nearest neighbors) and divide dataset into input and desired output images
+    in_test[-1] = np.array(in_test[-1].resize((img_width,img_height),Image.NEAREST))
+    in_test[-1] = np.transpose(in_test[-1], (1, 0, 2))
+
+for i in os.listdir('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/testing/labels/'):
+    # load the image
+    out_test.append(Image.open('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/testing/labels/'+i))
+
+    # resize image (nearest neighbors) and divide dataset into input and desired output images
+    out_test[-1] = np.array(out_test[-1].resize((img_width,img_height), Image.NEAREST))
+    out_test[-1] = np.transpose(out_test[-1], (1, 0))
+
+for i in os.listdir('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/validation/images/'):
+    # load the image
+    in_valid.append(Image.open('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/validation/images/'+i))
+
+    # resize image (nearest neighbors) and divide dataset into input and desired output images
+    in_valid[-1] = np.array(in_valid[-1].resize((img_width,img_height),Image.NEAREST))
+    in_valid[-1] = np.transpose(in_valid[-1], (1, 0, 2))
+
+
+for i in os.listdir('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/validation/labels/'):
+    # load the image
+    out_valid.append(Image.open('C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/validation/labels/'+i))
+
+    # resize image (nearest neighbors) and divide dataset into input and desired output images
+    out_valid[-1] = np.array(out_valid[-1].resize((img_width,img_height), Image.NEAREST))
+    out_valid[-1] = np.transpose(out_valid[-1], (1, 0))
+
 
 images =  Input(shape=(600, 400, 3))
 output_1 = Conv2D(64, (3, 3), activation='relu', padding='same')(images)
