@@ -16,7 +16,6 @@ from PIL import Image
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(gpus[0], True)
-tf.config.experimental.set_virtual_device_configuration(tf.config.experimental.list_physical_devices('GPU')[0], [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=10024)])
 # np.set_printoptions(threshold=sys.maxsize)
 # np.set_printoptions(threshold=1000)
 
