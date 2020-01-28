@@ -7,6 +7,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import datasets, layers, models
 import sklearn.model_selection
+import matplotlib.pyplot as plt
 from tensorflow.python.keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose
 from tensorflow.python.keras.models import Model
 from keras.backend.tensorflow_backend import set_session
@@ -101,13 +102,13 @@ in_test = np.array([x for x in in_test])
 out_test = np.array([x for x in out_test])
 
 
-modelzero = model.fit(in_train, out_train, epochs=10, batch_size=2, validation_data=(in_test, out_test))
+modelzero = model.fit(in_train, out_train, epochs=20, batch_size=3, validation_data=(in_test, out_test))
 
 plt.plot(modelzero.history['accuracy'], label='accuracy')
 plt.plot(modelzero.history['val_accuracy'], label = 'val_accuracy')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
-plt.ylim([0.5, 1])
+plt.ylim([0.0, 1])
 plt.legend(loc='lower right')
 
 test_loss, test_acc = model.evaluate(in_test,  out_test, verbose=2)
