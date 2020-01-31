@@ -9,14 +9,9 @@ import sklearn.model_selection
 import matplotlib.pyplot as plt
 from tensorflow.python.keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose
 from tensorflow.python.keras.models import Model
-from keras.backend.tensorflow_backend import set_session
+#from sklearn.metrics import roc_auc_score
 
 from PIL import Image
-
-#gpus = tf.config.experimental.list_physical_devices('GPU')
-#tf.config.experimental.set_memory_growth(gpus[0], True)
-# np.set_printoptions(threshold=sys.maxsize)
-# np.set_printoptions(threshold=1000)
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
@@ -31,16 +26,20 @@ if gpus:
     # Virtual devices must be set before GPUs have been initialized
     print(e)
 
+#def auroc(y_true, y_pred):
+#    return tf.py_func(roc_auc_score, (y_true, y_pred), tf.double)
+
 dataset_dir = 'C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/'
 img_width = 600
 img_height = 400
 n_epochs = 1
-runs = 20 #dataset subdivisions
-train_batch = 900
-test_batch = 1 #zero makes the for loop crash
-valid_batch = 100
+runs = 2 #dataset subdivisions #20
+train_batch = 100 #900
 accuracy_hist = []
-valaccuracy_hist = []
+val_accuracy_hist = []
+loss_hist = []
+val_loss_hist = []
+
 
 images =  Input(shape=(600, 400, 3))
 output_1 = Conv2D(64, (3, 3), activation='relu', padding='same')(images)
@@ -79,17 +78,15 @@ model = Model(inputs=images, outputs=predictions)
 #sparse categorical is ok for output where 1 class is true and the others are false
 model.compile(optimizer='adam',loss='sparse_categorical_crossentropy',metrics=['accuracy'])
 
+model.summary()
+
 for epochs in range(n_epochs):
+    in_valid = []
+    out_valid = []
     for r in range(runs):
         in_train=[]
-        in_test=[]
-        in_valid=[]
         out_train=[]
-        out_test=[]
-        out_valid=[]
         train_size = train_batch*(r+1)
-        test_size = test_batch*(r+1)
-        valid_size = valid_batch*(r+1)
         print('checkpoint 1')
 
         for i in os.listdir(dataset_dir+'training/images/')[train_size-train_batch:train_size]:
@@ -110,55 +107,47 @@ for epochs in range(n_epochs):
             out_train[-1] = np.array(out_train[-1].resize((img_width,img_height), Image.NEAREST))
             out_train[-1] = np.transpose(out_train[-1], (1, 0))
 
-        for i in os.listdir(dataset_dir+'testing/images/')[test_size-test_batch:test_size]:
-            # load the image
-            in_test.append(Image.open(dataset_dir+'testing/images/'+i))
-
-            # resize image (nearest neighbors) and divide dataset into input and desired output images
-            in_test[-1] = np.array(in_test[-1].resize((img_width,img_height),Image.NEAREST))
-            in_test[-1] = np.transpose(in_test[-1], (1, 0, 2))
-
-        for i in os.listdir(dataset_dir+'testing/labels/')[test_size-test_batch:test_size]:
-            # load the image
-            out_test.append(Image.open(dataset_dir+'testing/labels/'+i))
-
-            # resize image (nearest neighbors) and divide dataset into input and desired output images
-            out_test[-1] = np.array(out_test[-1].resize((img_width,img_height), Image.NEAREST))
-            out_test[-1] = np.transpose(out_test[-1], (1, 0))
-
-        for i in os.listdir(dataset_dir+'validation/images/')[valid_size-valid_batch:valid_size]:
-            # load the image
-            in_valid.append(Image.open(dataset_dir+'validation/images/'+i))
-
-            # resize image (nearest neighbors) and divide dataset into input and desired output images
-            in_valid[-1] = np.array(in_valid[-1].resize((img_width,img_height),Image.NEAREST))
-            in_valid[-1] = np.transpose(in_valid[-1], (1, 0, 2))
-
-
-        for i in os.listdir(dataset_dir+'validation/labels/')[valid_size-valid_batch:valid_size]:
-            # load the image
-            out_valid.append(Image.open(dataset_dir+'validation/labels/'+i))
-
-            # resize image (nearest neighbors) and divide dataset into input and desired output images
-            out_valid[-1] = np.array(out_valid[-1].resize((img_width,img_height), Image.NEAREST))
-            out_valid[-1] = np.transpose(out_valid[-1], (1, 0))
-
         print('checkpoint 3')
         #in_train, in_test, out_train, out_test = sklearn.model_selection.train_test_split(in_image,out_image,test_size=0.2)
 
         in_train = np.array([x for x in in_train])
         out_train = np.array([x for x in out_train])
-        in_test = np.array([x for x in in_test])
-        out_test = np.array([x for x in out_test])
-        in_valid = np.array([x for x in in_valid])
-        out_valid = np.array([x for x in out_valid])
 
-        modelzero = model.fit(in_train, out_train, epochs=1, batch_size=2, validation_data=(in_valid, out_valid))
+        modelzero = model.fit(in_train, out_train, epochs=1, batch_size=2)
 
         print('checkpoint 4')
 
+    for i in os.listdir(dataset_dir + 'validation/images/'):
+        # load the image
+        in_valid.append(Image.open(dataset_dir + 'validation/images/' + i))
+
+        # resize image (nearest neighbors) and divide dataset into input and desired output images
+        in_valid[-1] = np.array(in_valid[-1].resize((img_width, img_height), Image.NEAREST))
+        in_valid[-1] = np.transpose(in_valid[-1], (1, 0, 2))
+
+    print('checkpoint 5')
+
+    for i in os.listdir(dataset_dir + 'validation/labels/'):
+        # load the image
+        out_valid.append(Image.open(dataset_dir + 'validation/labels/' + i))
+
+        # resize image (nearest neighbors) and divide dataset into input and desired output images
+        out_valid[-1] = np.array(out_valid[-1].resize((img_width, img_height), Image.NEAREST))
+        out_valid[-1] = np.transpose(out_valid[-1], (1, 0))
+
+    print('checkpoint 6')
+
+    in_valid = np.array([x for x in in_valid])
+    out_valid = np.array([x for x in out_valid])
+
+    val_loss, val_accuracy = model.evaluate(in_valid, out_valid, batch_size=1, verbose=1)
+
     accuracy_hist += modelzero.history['accuracy']
-    valaccuracy_hist += modelzero.history['val_accuracy']
+    loss_hist += modelzero.history['loss']
+    #valaccuracy_hist += modelzero.history['val_accuracy']
+    val_accuracy_hist += [val_accuracy]
+    val_loss_hist += [val_loss]
+
 
 plt.plot(accuracy_hist, label='accuracy')
 plt.plot(valaccuracy_hist, label = 'val_accuracy')
@@ -166,5 +155,31 @@ plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 #plt.ylim([0.0, 1])
 plt.legend(loc='lower right')
+
+in_train = []
+out_train = []
+in_valid = []
+out_valid = []
+in_test = []
+out_test = []
+
+for i in os.listdir(dataset_dir + 'testing/images/')[test_size - test_batch:test_size]:
+    # load the image
+    in_test.append(Image.open(dataset_dir + 'testing/images/' + i))
+
+    # resize image (nearest neighbors) and divide dataset into input and desired output images
+    in_test[-1] = np.array(in_test[-1].resize((img_width, img_height), Image.NEAREST))
+    in_test[-1] = np.transpose(in_test[-1], (1, 0, 2))
+
+for i in os.listdir(dataset_dir + 'testing/labels/')[test_size - test_batch:test_size]:
+    # load the image
+    out_test.append(Image.open(dataset_dir + 'testing/labels/' + i))
+
+    # resize image (nearest neighbors) and divide dataset into input and desired output images
+    out_test[-1] = np.array(out_test[-1].resize((img_width, img_height), Image.NEAREST))
+    out_test[-1] = np.transpose(out_test[-1], (1, 0))
+
+in_test = np.array([x for x in in_test])
+out_test = np.array([x for x in out_test])
 
 test_loss, test_acc = model.evaluate(in_test,  out_test, verbose=2)
