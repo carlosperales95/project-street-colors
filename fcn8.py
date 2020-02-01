@@ -7,7 +7,7 @@ import tensorflow as tf
 from tensorflow import keras
 import sklearn.model_selection
 import matplotlib.pyplot as plt
-from tensorflow.python.keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose
+from tensorflow.python.keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, Dense
 from tensorflow.python.keras.models import Model
 #from sklearn.metrics import roc_auc_score
 
@@ -32,9 +32,9 @@ if gpus:
 dataset_dir = 'C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/'
 img_width = 600
 img_height = 400
-n_epochs = 1
-runs = 2 #dataset subdivisions #20
-train_batch = 100 #900
+n_epochs = 100
+runs = 20 #dataset subdivisions #20
+train_batch = 800 #900
 accuracy_hist = []
 val_accuracy_hist = []
 loss_hist = []
@@ -64,8 +64,8 @@ jokerlap_b2 = Conv2D(66, (3, 3), activation='relu', padding='same')(jokerlap_b1)
 output_16 = Conv2D(512, (3, 3), activation='relu', padding='same')(output_15)
 output_17 = Conv2D(512, (3, 3), activation='relu', padding='same')(output_16)
 output_18 = MaxPooling2D((2, 2))(output_17)
-output_19 = Conv2D(4096, (3, 3), activation='relu', padding='same')(output_18)
-output_20 = Conv2D(4096, (3, 3), activation='relu', padding='same')(output_19)
+output_19 = Dense(4096, activation='relu')(output_18)
+output_20 = Dense(4096, activation='relu')(output_19)
 output_21 = Conv2D(66, (3, 3), activation='relu', padding='same')(output_20)
 output_22 = Conv2DTranspose(66, (3, 3), strides=(2,2), activation='relu')(output_21)
 jokerlap_b3 = keras.layers.Add()([output_22, jokerlap_b2])
@@ -148,6 +148,9 @@ for epochs in range(n_epochs):
     val_accuracy_hist += [val_accuracy]
     val_loss_hist += [val_loss]
 
+    if val_loss==min(val_loss_hist):
+        model.save_weights('fcn8.h5')
+
 
 plt.plot(accuracy_hist, label='accuracy')
 plt.plot(valaccuracy_hist, label = 'val_accuracy')
@@ -163,7 +166,7 @@ out_valid = []
 in_test = []
 out_test = []
 
-for i in os.listdir(dataset_dir + 'testing/images/')[test_size - test_batch:test_size]:
+for i in os.listdir(dataset_dir + 'training/images/')[16000:]:
     # load the image
     in_test.append(Image.open(dataset_dir + 'testing/images/' + i))
 
@@ -171,7 +174,7 @@ for i in os.listdir(dataset_dir + 'testing/images/')[test_size - test_batch:test
     in_test[-1] = np.array(in_test[-1].resize((img_width, img_height), Image.NEAREST))
     in_test[-1] = np.transpose(in_test[-1], (1, 0, 2))
 
-for i in os.listdir(dataset_dir + 'testing/labels/')[test_size - test_batch:test_size]:
+for i in os.listdir(dataset_dir + 'training/labels/')[16000:]:
     # load the image
     out_test.append(Image.open(dataset_dir + 'testing/labels/' + i))
 
