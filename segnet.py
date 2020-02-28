@@ -6,6 +6,8 @@ import os
 import tensorflow as tf
 from tensorflow import keras
 import sklearn.model_selection
+import matplotlib
+matplotlib.use('tkagg')
 import matplotlib.pyplot as plt
 from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, Dense, BatchNormalization, Activation, Reshape
 from tensorflow.keras.models import Model
@@ -100,36 +102,8 @@ output_8 = Activation('relu')(output_8a)
 output_9a = Conv2D(256, (3, 3),  padding='same')(output_8)
 output_9 = Activation('relu')(output_9a)
 output_10, argmax3 = MaxPoolingWithArgmax2D(output_9,ksize=(1, 2,2,1),strides=[1,2,2,1],padding='SAME')
-output_11a = Conv2D(512, (3, 3),  padding='same')(output_10)
-output_11 = Activation('relu')(output_11a)
-output_12a = Conv2D(512, (3, 3),  padding='same')(output_11)
-output_12 = Activation('relu')(output_12a)
-output_13a = Conv2D(512, (3, 3),  padding='same')(output_12)
-output_13 = Activation('relu')(output_13a)
-output_14, argmax4 = MaxPoolingWithArgmax2D(output_13,ksize=(1, 2,2,1),strides=[1,2,2,1],padding='SAME')
-output_15a = Conv2D(512, (3, 3),  padding='same')(output_14)
-output_15 = Activation('relu')(output_15a)
-output_16a = Conv2D(512, (3, 3),  padding='same')(output_15)
-output_16 = Activation('relu')(output_16a)
-output_17a = Conv2D(512, (3, 3),  padding='same')(output_16)
-output_17 = Activation('relu')(output_17a)
-output_18, argmax5 = MaxPoolingWithArgmax2D(output_17,ksize=(1, 2,2,1),strides=[1,2,2,1],padding='SAME')
 
-output_19 = MaxUnpooling2D(output_18, argmax5)
-output_20a = Conv2D(512, (3, 3),  padding='same')(output_19)
-output_20 = Activation('relu')(output_20a)
-output_21a = Conv2D(512, (3, 3),  padding='same')(output_20)
-output_21 = Activation('relu')(output_21a)
-output_22a = Conv2D(512, (3, 3),  padding='same')(output_21)
-output_22 = Activation('relu')(output_22a)
-output_23 = MaxUnpooling2D(output_22, argmax4)
-output_24a = Conv2D(512, (3, 3),  padding='same')(output_23)
-output_24 = Activation('relu')(output_24a)
-output_25a = Conv2D(512, (3, 3),  padding='same')(output_24)
-output_25 = Activation('relu')(output_25a)
-output_26a = Conv2D(256, (3, 3),  padding='same')(output_25)
-output_26 = Activation('relu')(output_26a)
-output_27 = MaxUnpooling2D(output_26, argmax3)
+output_27 = MaxUnpooling2D(output_10, argmax3)
 output_28a = Conv2D(256, (3, 3),  padding='same')(output_27)
 output_28 = Activation('relu')(output_28a)
 output_29a = Conv2D(256, (3, 3),  padding='same')(output_28)
@@ -150,7 +124,7 @@ predictions = Activation('softmax')(output_36a)
 
 model = Model(inputs=images, outputs=predictions)
 
-HRVSProp=keras.optimizers.RMSprop(learning_rate=0.0001, rho=0.9)
+HRVSProp=keras.optimizers.Adam(learning_rate=0.0001)
 
 model.compile(optimizer=HRVSProp,loss='sparse_categorical_crossentropy',metrics=['accuracy'])
 #sparse categorical is ok for output where 1 class is true and the others are false
@@ -163,6 +137,19 @@ model.summary()
 #model.save_weights('default.h5')
 #model.load_weights('default.h5')
 #model.load_weights('segnet g1.h5')
+
+def LabelCompact(image_label,class_from,class_to):
+    class_matches = (image_label[ :, :, 0] == class_from)
+    image_label[class_matches, 0] = class_to
+    return image_label
+
+def ClassCompact(image_label):
+    couples = [(0,30),(1,19),(9,2),(8,7),(11,7),(12,7),(21,20),(22,20),(52,20),(57,20),(25,30),(26,30),(31,30),(33,32),(34,32),(35,32),(37,32),(38,32),(39,32),(40,32)
+        ,(49,32),(51,32),(41,36),(56,54),(60,54),(61,54),(62,54)]
+    couples[1][1]
+    for j in couples:
+        image_label = LabelCompact(image_label,j[0],j[1])
+    return image_label
 
 def ImportValidation():
     in_valid = []
@@ -186,16 +173,24 @@ def ImportValidation():
         out_valid[-1] = np.array(out_valid[-1].resize((img_width, img_height), Image.NEAREST))
         out_valid[-1] = np.expand_dims(out_valid[-1], axis=-1)
         out_valid[-1] = np.transpose(out_valid[-1], (1, 0, 2))
+        out_valid[-1] = ClassCompact(out_valid[-1])
+
 
     in_valid = np.array([x for x in in_valid])
     out_valid = np.array([x for x in out_valid])
     return in_valid, out_valid
 
-#in_valid, out_valid = ImportValidation()
+#with open('vah.pickle', 'rb') as f:
+    #val_accuracy_hist = pickle.load(f)
+
+#with open('vlh.pickle', 'rb') as f:
+    #val_loss_hist = pickle.load(f)
+
+in_valid, out_valid = ImportValidation()
 
 for epochs in range(n_epochs):
     #epochs=0
-    se=0
+    se=2
     random.shuffle(trainingset)
     print('checkpoint 0')
     for r in range(runs):
@@ -223,6 +218,7 @@ for epochs in range(n_epochs):
             out_train[-1] = np.array(out_train[-1].resize((img_width,img_height), Image.NEAREST))
             out_train[-1] = np.expand_dims(out_train[-1], axis=-1)
             out_train[-1] = np.transpose(out_train[-1], (1, 0, 2))
+            out_train[-1] = ClassCompact(out_train[-1])
 
         print('checkpoint 3')
         #in_train, in_test, out_train, out_test = sklearn.model_selection.train_test_split(in_image,out_image,test_size=0.2)
@@ -230,7 +226,10 @@ for epochs in range(n_epochs):
         in_train = np.array([x for x in in_train])
         out_train = np.array([x for x in out_train])
 
-        modelzero = model.fit(in_train, out_train, epochs=1, batch_size=1, validation_data=[in_train,out_train])
+        modelzero = model.fit(in_train, out_train, epochs=1, batch_size=1, validation_data=[in_valid,out_valid])
+
+        val_accuracy_hist += modelzero.history['val_accuracy']
+        val_loss_hist += modelzero.history['val_loss']
 
         accuracy_hist += modelzero.history['accuracy']
         loss_hist += modelzero.history['loss']
@@ -239,18 +238,21 @@ for epochs in range(n_epochs):
     if in_valid==[]:
         in_valid, out_valid = ImportValidation()
 
-    val_loss, val_accuracy = model.evaluate(in_train, out_train, batch_size=1, verbose=1)
+    #val_loss, val_accuracy = model.evaluate(in_valid, out_valid, batch_size=1, verbose=1)
 
-    #valaccuracy_hist += modelzero.history['val_accuracy']
-    val_accuracy_hist += [val_accuracy]
-    val_loss_hist += [val_loss]
+    #val_accuracy_hist += modelzero.history['val_accuracy']
+    #val_loss_hist += modelzero.history['val_loss']
+    #val_accuracy_hist += [val_accuracy]
+    #val_loss_hist += [val_loss]
 
-    print(val_loss, val_accuracy)
+    #print(val_loss, val_accuracy)
 
     ssee=se+epochs
-    model.save_weights('segnet g'+str(ssee)+'.h5')
-    if val_loss==min(val_loss_hist):
-        model.save_weights('segnet.h5')
+    #model.save_weights('segnet g'+str(ssee)+'.h5')
+    model.save_weights('segnet g'+str(ssee)+'.tf')
+
+    #if val_loss==min(val_loss_hist):
+    #    model.save_weights('segnet.h5')
 
     with open('vah.pickle', 'wb') as f:
         pickle.dump(val_accuracy_hist, f, pickle.HIGHEST_PROTOCOL)
@@ -259,19 +261,13 @@ for epochs in range(n_epochs):
         pickle.dump(val_loss_hist, f, pickle.HIGHEST_PROTOCOL)
 
 
-#with open('vah.pickle', 'rb') as f:
-    #val_accuracy_hist = pickle.load(f)
-
-#with open('vlh.pickle', 'rb') as f:
-    #val_loss_hist = pickle.load(f)
-
 plt.plot(accuracy_hist, label='accuracy')
 plt.plot(val_accuracy_hist, label = 'val_accuracy')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 #plt.ylim([0.0, 1])
 plt.legend(loc='lower right')
-
+plt.show()
 
 in_test = []
 out_test = []
@@ -292,6 +288,7 @@ for i in sorted(os.listdir(dataset_dir + 'training/labels/'))[16000:]:
     out_test[-1] = np.array(out_test[-1].resize((img_width, img_height), Image.NEAREST))
     out_test[-1] = np.expand_dims(out_test[-1], axis=-1)
     out_test[-1] = np.transpose(out_test[-1], (1, 0, 2))
+    out_test[-1] = ClassCompact(out_test[-1])
 
 in_test = np.array([x for x in in_test])
 out_test = np.array([x for x in out_test])
@@ -303,6 +300,27 @@ print(test_loss, test_acc)
 test_accuracy_hist += [test_acc]
 test_loss_hist += [test_loss]
 
- model.load_weights('segnet g1.h5')
+model.load_weights('segnet g4.tf')
 
 np.mean(accuracy_hist)
+
+weirdel=model.predict(in_valid[1:2],verbose=1)
+
+weirdel[0,0,0]
+plt.imshow(weirdel[0,:,:,10])
+plt.imshow(out_valid[1,:,:0])
+plt.imshow(in_valid[1,:,:,0])
+
+plt.imshow(np.argmax(weirdel, axis=-1)[0,:,:])
+
+cor_valid=np.zeros([66,66],dtype=int)
+
+for i in range(2000):
+    pred_valid=model.predict(in_valid[i:i+1],verbose=1)
+    pmax_valid=np.argmax(pred_valid, axis=-1)[0,:,:]
+    for pxw in range(img_width):
+        for pxh in range(img_height):
+            cor_valid[out_valid[i,pxw,pxh,0],pmax_valid[pxw,pxh]]+=1
+
+np.savetxt("cor_valid.csv", cor_valid, delimiter=";", fmt="%u")
+pd.DataFrame(cor_valid).to_csv("cor_valid.csv",)
