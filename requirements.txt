@@ -7,3 +7,4 @@ matplotlib
 pillow
 sklearn
 pip
+tensorflow_addons

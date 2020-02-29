@@ -30,88 +30,88 @@ if gpus:
 #    return tf.py_func(roc_auc_score, (y_true, y_pred), tf.double)
 
 dataset_dir = 'C:/Users/Leonardo/Documents/Leonardo-Poco importante/mapillarydb/'
-img_width = 600
-img_height = 400
+img_width = 576
+img_height = 384
 n_epochs = 100
-runs = 20 #dataset subdivisions #20
-train_batch = 800 #900
+runs = 40 #dataset subdivisions #20
+train_batch = 400 #900
 accuracy_hist = []
 val_accuracy_hist = []
 loss_hist = []
 val_loss_hist = []
 
 
-images =  Input(shape=(600, 400, 3))
+images =  Input(shape=(img_width, img_height, 3))
 output_1a = Conv2D(64, (3, 3),  padding='same')(images)
-output_1b = BatchNormalization()(output_1a)
+output_1b = InstanceNormalization()(output_1a)
 output_1 = Activation('relu')(output_1b)
 output_2a = Conv2D(64, (3, 3),  padding='same')(output_1)
-output_2b = BatchNormalization()(output_2a)
+output_2b = InstanceNormalization()(output_2a)
 output_2 = Activation('relu')(output_2b)
-output_3 = MaxPooling2D((3, 2))(output_2)
+output_3 = MaxPooling2D((2, 2))(output_2)
 output_4a = Conv2D(128, (3, 3),  padding='same')(output_3)
-output_4b = BatchNormalization()(output_4a)
+output_4b = InstanceNormalization()(output_4a)
 output_4 = Activation('relu')(output_4b)
 output_5a = Conv2D(128, (3, 3),  padding='same')(output_4)
-output_5b = BatchNormalization()(output_5a)
+output_5b = InstanceNormalization()(output_5a)
 output_5 = Activation('relu')(output_5b)
 output_6 = MaxPooling2D((2, 2))(output_5)
 output_7a = Conv2D(256, (3, 3),  padding='same')(output_6)
-output_7b = BatchNormalization()(output_7a)
+output_7b = InstanceNormalization()(output_7a)
 output_7 = Activation('relu')(output_7b)
 output_8a = Conv2D(256, (3, 3),  padding='same')(output_7)
-output_8b = BatchNormalization()(output_8a)
+output_8b = InstanceNormalization()(output_8a)
 output_8 = Activation('relu')(output_8b)
 output_9a = Conv2D(256, (3, 3),  padding='same')(output_8)
-output_9b = BatchNormalization()(output_9a)
+output_9b = InstanceNormalization()(output_9a)
 output_9 = Activation('relu')(output_9b)
 output_10 = MaxPooling2D((2, 2))(output_9)
 output_11a = Conv2D(512, (3, 3),  padding='same')(output_10)
-output_11b = BatchNormalization()(output_11a)
+output_11b = InstanceNormalization()(output_11a)
 output_11 = Activation('relu')(output_11b)
 jokerlap_a1 = MaxPooling2D((2, 2))(output_9)
 jokerlap_a2a = Conv2D(66, (3, 3),  padding='same')(jokerlap_a1)
-jokerlap_a2b = BatchNormalization()(jokerlap_a2a)
+jokerlap_a2b = InstanceNormalization()(jokerlap_a2a)
 jokerlap_a2 = Activation('relu')(jokerlap_a2b)
 output_12a = Conv2D(512, (3, 3),  padding='same')(output_11)
-output_12b = BatchNormalization()(output_12a)
+output_12b = InstanceNormalization()(output_12a)
 output_12 = Activation('relu')(output_12b)
 output_13a = Conv2D(512, (3, 3),  padding='same')(output_12)
-output_13b = BatchNormalization()(output_13a)
+output_13b = InstanceNormalization()(output_13a)
 output_13 = Activation('relu')(output_13b)
 output_14 = MaxPooling2D((2, 2))(output_13)
 output_15a = Conv2D(512, (3, 3),  padding='same')(output_14)
-output_15b = BatchNormalization()(output_15a)
+output_15b = InstanceNormalization()(output_15a)
 output_15 = Activation('relu')(output_15b)
 jokerlap_b1 = MaxPooling2D((2, 2))(output_13)
 jokerlap_b2a = Conv2D(66, (3, 3),  padding='same')(jokerlap_b1)
-jokerlap_b2b = BatchNormalization()(jokerlap_b2a)
+jokerlap_b2b = InstanceNormalization()(jokerlap_b2a)
 jokerlap_b2 = Activation('relu')(jokerlap_b2b)
 output_16a = Conv2D(512, (3, 3),  padding='same')(output_15)
-output_16b = BatchNormalization()(output_16a)
+output_16b = InstanceNormalization()(output_16a)
 output_16 = Activation('relu')(output_16b)
 output_17a = Conv2D(512, (3, 3),  padding='same')(output_16)
-output_17b = BatchNormalization()(output_17a)
+output_17b = InstanceNormalization()(output_17a)
 output_17 = Activation('relu')(output_17b)
 output_18 = MaxPooling2D((2, 2))(output_17)
 output_19a = Dense(4096, activation='relu')(output_18)
-output_19b = BatchNormalization()(output_19a)
+output_19b = InstanceNormalization()(output_19a)
 output_19 = Activation('relu')(output_19b)
 output_20a = Dense(4096, activation='relu')(output_19)
-output_20b = BatchNormalization()(output_20a)
+output_20b = InstanceNormalization()(output_20a)
 output_20 = Activation('relu')(output_20b)
 output_21a = Dense(66, activation='relu')(output_20)
-output_21b = BatchNormalization()(output_21a)
+output_21b = InstanceNormalization()(output_21a)
 output_21 = Activation('relu')(output_21b)
-output_22a = Conv2DTranspose(66, (3, 3), strides=(2,2), activation='relu')(output_21)
-output_22b = BatchNormalization()(output_22a)
+output_22a = Conv2DTranspose(66, (3, 3), strides=(2,2), padding='same')(output_21)
+output_22b = InstanceNormalization()(output_22a)
 output_22 = Activation('relu')(output_22b)
 jokerlap_b3 = keras.layers.Add()([output_22, jokerlap_b2])
 output_23a = Conv2DTranspose(66, (3, 3), strides=(2,2),  padding='same')(jokerlap_b3)
-output_23b = BatchNormalization()(output_23a)
+output_23b = InstanceNormalization()(output_23a)
 output_23 = Activation('relu')(output_23b)
 jokerlap_a3 = keras.layers.Add()([output_23, jokerlap_a2])
-predictions = Conv2DTranspose(66, (3, 3), strides=(12,8), activation='softmax', padding='same')(jokerlap_a3)
+predictions = Conv2DTranspose(66, (3, 3), strides=(8,8), activation='softmax', padding='same')(jokerlap_a3)
 
 model = Model(inputs=images, outputs=predictions)
 
@@ -153,7 +153,7 @@ for epochs in range(n_epochs):
         in_train = np.array([x for x in in_train])
         out_train = np.array([x for x in out_train])
 
-        modelzero = model.fit(in_train, out_train, epochs=1, batch_size=2)
+        modelzero = model.fit(in_train, out_train, epochs=1, batch_size=1)
 
         print('checkpoint 4')
 
@@ -189,7 +189,7 @@ for epochs in range(n_epochs):
     val_loss_hist += [val_loss]
 
     if val_loss==min(val_loss_hist):
-        model.save_weights('fcn8bn.h5')
+        model.save_weights('fcn8bn2.h5')
 
 
 plt.plot(accuracy_hist, label='accuracy')
@@ -216,7 +216,7 @@ out_test = []
 
 for i in os.listdir(dataset_dir + 'training/images/')[16000:]:
     # load the image
-    in_test.append(Image.open(dataset_dir + 'testing/images/' + i))
+    in_test.append(Image.open(dataset_dir + 'training/images/' + i))
 
     # resize image (nearest neighbors) and divide dataset into input and desired output images
     in_test[-1] = np.array(in_test[-1].resize((img_width, img_height)))
@@ -234,3 +234,21 @@ in_test = np.array([x for x in in_test])
 out_test = np.array([x for x in out_test])
 
 test_loss, test_acc = model.evaluate(in_test,  out_test, verbose=2)
+
+############################
+
+for i in os.listdir(dataset_dir + 'training/images/'):
+    # load the image
+    in_test=Image.open(dataset_dir + 'training/images/' + i)
+    # resize image (nearest neighbors) and divide dataset into input and desired output images
+    in_test = np.array(in_test.resize((img_width, img_height)))
+    in_test = Image.fromarray(in_test, 'RGB')
+    in_test.save(dataset_dir + 'training/images_lin/'+i)
+
+    for i in os.listdir(dataset_dir + 'training/labels/'):
+        # load the image
+        in_test = Image.open(dataset_dir + 'training/labels/' + i)
+        # resize image (nearest neighbors) and divide dataset into input and desired output images
+        in_test = np.array(in_test.resize((img_width, img_height)))
+        in_test = Image.fromarray(in_test, 'RGB')
+        in_test.save(dataset_dir + 'training/labels_lin/' + i)

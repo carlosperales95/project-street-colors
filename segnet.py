@@ -9,10 +9,11 @@ import sklearn.model_selection
 import matplotlib
 matplotlib.use('tkagg')
 import matplotlib.pyplot as plt
-from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, Dense, BatchNormalization, Activation, Reshape
+from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, Dense, BatchNormalization, Activation, Reshape, Concatenate
+from tensorflow_addons.layers import InstanceNormalization
 from tensorflow.keras.models import Model
 from keras import optimizers
-from layers import GroupNormalization, InstanceNormalization
+#from layers import GroupNormalization, InstanceNormalization
 #from layers import MaxPoolingWithArgmax2D, MaxUnpooling2D
 from tensorflow.compat.v1.nn import max_pool_with_argmax as MaxPoolingWithArgmax2D
 import pickle
@@ -41,6 +42,7 @@ tf.config.experimental.set_memory_growth(tf.config.list_physical_devices('GPU')[
 #    return tf.py_func(roc_auc_score, (y_true, y_pred), tf.double)
 
 dataset_dir = '/home/leonardo/Documenti/mapillarydb/'
+weights_dir = 'weights/segnet c'
 img_width = 288 #576
 img_height = 192 #384
 n_epochs = 10
@@ -57,70 +59,111 @@ out_valid = []
 
 trainingset = [os.path.splitext(filename)[0] for filename in sorted(os.listdir(dataset_dir+'training/images_lin/'))[:16000]]
 
-def MaxUnpooling2D(pool, ind, ksize=[1, 2, 2, 1], name=None):
-    with tf.compat.v1.variable_scope('name') as scope:
-        input_shape = tf.shape(pool)
-        output_shape = [input_shape[0], input_shape[1] * ksize[1], input_shape[2] * ksize[2], input_shape[3]]
-
-        flat_input_size = tf.compat.v1.cumprod(input_shape)[-1]
-        flat_output_shape = tf.stack([output_shape[0], output_shape[1] * output_shape[2] * output_shape[3]])
-
-        pool_ = tf.reshape(pool, tf.stack([flat_input_size]))
-        batch_range = tf.reshape(tf.range(tf.cast(output_shape[0], tf.int64), dtype=ind.dtype),
-                                 shape=tf.stack([input_shape[0], 1, 1, 1]))
-        b = tf.ones_like(ind) * batch_range
-        b = tf.reshape(b, tf.stack([flat_input_size, 1]))
-        ind_ = tf.reshape(ind, tf.stack([flat_input_size, 1]))
-        ind_ = ind_ - b * tf.cast(flat_output_shape[1], tf.int64)
-        ind_ = tf.concat([b, ind_], 1)
-
-        ret = tf.scatter_nd(ind_, pool_, shape=tf.cast(flat_output_shape, tf.int64))
-        ret = tf.reshape(ret, tf.stack(output_shape))
-
-        set_input_shape = pool.get_shape()
-        set_output_shape = [set_input_shape[0], set_input_shape[1] * ksize[1], set_input_shape[2] * ksize[2], set_input_shape[3]]
-        ret.set_shape(set_output_shape)
-    return ret
-
-#keras.backend.set_learning_phase(1)
-
 images =  Input(shape=(img_width, img_height, 3))
 output_1a = Conv2D(64, (3, 3),  padding='same')(images)
-output_1 = Activation('relu')(output_1a)
+output_1b = InstanceNormalization()(output_1a)
+output_1 = Activation('relu')(output_1b)
 output_2a = Conv2D(64, (3, 3),  padding='same')(output_1)
-output_2 = Activation('relu')(output_2a)
-output_3, argmax1 = MaxPoolingWithArgmax2D(output_2,ksize=(1, 2,2,1),strides=[1,2,2,1],padding='SAME')
+output_2b = InstanceNormalization()(output_2a)
+output_2 = Activation('relu')(output_2b)
+output_3 = MaxPooling2D((2, 2))(output_2)
 output_4a = Conv2D(128, (3, 3),  padding='same')(output_3)
-output_4 = Activation('relu')(output_4a)
+output_4b = InstanceNormalization()(output_4a)
+output_4 = Activation('relu')(output_4b)
 output_5a = Conv2D(128, (3, 3),  padding='same')(output_4)
-output_5 = Activation('relu')(output_5a)
-output_6, argmax2 = MaxPoolingWithArgmax2D(output_5,ksize=(1, 2,2,1),strides=[1,2,2,1],padding='SAME')
+output_5b = InstanceNormalization()(output_5a)
+output_5 = Activation('relu')(output_5b)
+output_6 = MaxPooling2D((2, 2))(output_5)
 output_7a = Conv2D(256, (3, 3),  padding='same')(output_6)
-output_7 = Activation('relu')(output_7a)
+output_7b = InstanceNormalization()(output_7a)
+output_7 = Activation('relu')(output_7b)
 output_8a = Conv2D(256, (3, 3),  padding='same')(output_7)
-output_8 = Activation('relu')(output_8a)
+output_8b = InstanceNormalization()(output_8a)
+output_8 = Activation('relu')(output_8b)
 output_9a = Conv2D(256, (3, 3),  padding='same')(output_8)
-output_9 = Activation('relu')(output_9a)
-output_10, argmax3 = MaxPoolingWithArgmax2D(output_9,ksize=(1, 2,2,1),strides=[1,2,2,1],padding='SAME')
+output_9b = InstanceNormalization()(output_9a)
+output_9 = Activation('relu')(output_9b)
+output_10 = MaxPooling2D((2, 2))(output_9)
+output_11a = Conv2D(512, (3, 3),  padding='same')(output_10)
+output_11b = InstanceNormalization()(output_11a)
+output_11 = Activation('relu')(output_11b)
+output_12a = Conv2D(512, (3, 3),  padding='same')(output_11)
+output_12b = InstanceNormalization()(output_12a)
+output_12 = Activation('relu')(output_12b)
+output_13a = Conv2D(512, (3, 3),  padding='same')(output_12)
+output_13b = InstanceNormalization()(output_13a)
+output_13 = Activation('relu')(output_13b)
+output_14 = MaxPooling2D((2, 2))(output_13)
+output_15a = Conv2D(512, (3, 3),  padding='same')(output_14)
+output_15b = InstanceNormalization()(output_15a)
+output_15 = Activation('relu')(output_15b)
+output_16a = Conv2D(512, (3, 3),  padding='same')(output_15)
+output_16b = InstanceNormalization()(output_16a)
+output_16 = Activation('relu')(output_16b)
+output_17a = Conv2D(512, (3, 3),  padding='same')(output_16)
+output_17b = InstanceNormalization()(output_17a)
+output_17 = Activation('relu')(output_17b)
+output_18 = MaxPooling2D((2, 2))(output_17)
 
-output_27 = MaxUnpooling2D(output_10, argmax3)
-output_28a = Conv2D(256, (3, 3),  padding='same')(output_27)
-output_28 = Activation('relu')(output_28a)
+output_19a = Conv2DTranspose(512,kernel_size=(2,2), strides=(2,2), padding='same')(output_18)
+output_19b = InstanceNormalization()(output_19a)
+output_19 = Activation('relu')(output_19b)
+#output_20a = Conv2D(512, (3, 3),  padding='same')(output_19)
+#output_20b = InstanceNormalization()(output_20a)
+#output_20 = Activation('relu')(output_20b)
+output_20 = Concatenate()([output_19,output_17])
+output_21a = Conv2D(512, (3, 3),  padding='same')(output_20)
+output_21b = InstanceNormalization()(output_21a)
+output_21 = Activation('relu')(output_21b)
+output_22a = Conv2D(512, (3, 3),  padding='same')(output_21)
+output_22b = InstanceNormalization()(output_22a)
+output_22 = Activation('relu')(output_22b)
+output_23a = Conv2DTranspose(512,kernel_size=(2,2), strides=(2,2), padding='same')(output_22)
+output_23b = InstanceNormalization()(output_23a)
+output_23 = Activation('relu')(output_23b)
+#output_24a = Conv2D(512, (3, 3),  padding='same')(output_23)
+#output_24b = InstanceNormalization()(output_24a)
+#output_24 = Activation('relu')(output_24b)
+output_24 = Concatenate()([output_23,output_13])
+output_25a = Conv2D(512, (3, 3),  padding='same')(output_24)
+output_25b = InstanceNormalization()(output_25a)
+output_25 = Activation('relu')(output_25b)
+output_26a = Conv2D(512, (3, 3),  padding='same')(output_25)
+output_26b = InstanceNormalization()(output_26a)
+output_26 = Activation('relu')(output_26b)
+output_27a = Conv2DTranspose(256,kernel_size=(2,2), strides=(2,2), padding='same')(output_26)
+output_27b = InstanceNormalization()(output_27a)
+output_27 = Activation('relu')(output_27b)
+#output_28a = Conv2D(256, (3, 3),  padding='same')(output_27)
+#output_28b = InstanceNormalization()(output_28a)
+#output_28 = Activation('relu')(output_28b)
+output_28 = Concatenate()([output_27,output_9])
 output_29a = Conv2D(256, (3, 3),  padding='same')(output_28)
-output_29 = Activation('relu')(output_29a)
-output_30a = Conv2D(128, (3, 3),  padding='same')(output_29)
-output_30 = Activation('relu')(output_30a)
-output_31 = MaxUnpooling2D(output_30, argmax2)
-output_32a = Conv2D(128, (3, 3),  padding='same')(output_31)
-output_32 = Activation('relu')(output_32a)
-output_33a = Conv2D(64, (3, 3),  padding='same')(output_32)
-output_33 = Activation('relu')(output_33a)
-output_34 = MaxUnpooling2D(output_33, argmax1)
-output_35a = Conv2D(64, (3, 3),  padding='same')(output_34)
-output_35 = Activation('relu')(output_35a)
-output_36a = Conv2D(66, (3, 3),  padding='same')(output_35)
+output_29b = InstanceNormalization()(output_29a)
+output_29 = Activation('relu')(output_29b)
+output_30a = Conv2D(256, (3, 3),  padding='same')(output_29)
+output_30b = InstanceNormalization()(output_30a)
+output_30 = Activation('relu')(output_30b)
+output_31a = Conv2DTranspose(128,kernel_size=(2,2), strides=(2,2), padding='same')(output_30)
+output_31b = InstanceNormalization()(output_31a)
+output_31 = Activation('relu')(output_31b)
+#output_32a = Conv2D(128, (3, 3),  padding='same')(output_31)
+#output_32b = InstanceNormalization()(output_32a)
+#output_32 = Activation('relu')(output_32b)
+output_32 = Concatenate()([output_31,output_5])
+output_33a = Conv2D(128, (3, 3),  padding='same')(output_32)
+output_33b = InstanceNormalization()(output_33a)
+output_33 = Activation('relu')(output_33b)
+output_34a = Conv2DTranspose(64,kernel_size=(2,2), strides=(2,2), padding='same')(output_33)
+output_34b = InstanceNormalization()(output_34a)
+output_34 = Activation('relu')(output_34b)
+#output_35a = Conv2D(64, (3, 3),  padding='same')(output_34)
+#output_35b = InstanceNormalization()(output_35a)
+#output_35 = Activation('relu')(output_35b)
+output_35 = Concatenate()([output_34,output_2])
+output_36a = Conv2D(39, (1, 1),  padding='same')(output_35)
+output_36b = InstanceNormalization()(output_36a)
 predictions = Activation('softmax')(output_36a)
-
 
 model = Model(inputs=images, outputs=predictions)
 
@@ -144,8 +187,9 @@ def LabelCompact(image_label,class_from,class_to):
     return image_label
 
 def ClassCompact(image_label):
-    couples = [(0,30),(1,19),(9,2),(8,7),(11,7),(12,7),(21,20),(22,20),(52,20),(57,20),(25,30),(26,30),(31,30),(33,32),(34,32),(35,32),(37,32),(38,32),(39,32),(40,32)
-        ,(49,32),(51,32),(41,36),(56,54),(60,54),(61,54),(62,54)]
+    couples = [(0,30),(1,19),(8,7),(9,2),(11,7),(12,7),(21,20),(22,20),(25,30),(26,30),(31,30),(33,32),(34,32),(35,32),(37,32),(38,32),(39,32),(40,32)
+        ,(41,36),(49,32),(51,32),(52,20),(56,54),(57,20),(60,54),(61,54),(62,54)
+        ,(65,0),(64,1),(63,8),(59,9),(58,11),(55,12),(54,21),(53,22),(50,25),(48,26),(47,31),(46,33),(45,34),(44,35),(43,37),(42,38)]
     couples[1][1]
     for j in couples:
         image_label = LabelCompact(image_label,j[0],j[1])
@@ -190,7 +234,7 @@ in_valid, out_valid = ImportValidation()
 
 for epochs in range(n_epochs):
     #epochs=0
-    se=2
+    se=0
     random.shuffle(trainingset)
     print('checkpoint 0')
     for r in range(runs):
@@ -249,15 +293,15 @@ for epochs in range(n_epochs):
 
     ssee=se+epochs
     #model.save_weights('segnet g'+str(ssee)+'.h5')
-    model.save_weights('segnet g'+str(ssee)+'.tf')
+    model.save_weights(weights_dir+str(ssee)+'.tf')
 
     #if val_loss==min(val_loss_hist):
     #    model.save_weights('segnet.h5')
 
-    with open('vah.pickle', 'wb') as f:
+    with open('fcn_acc.pickle', 'wb') as f:
         pickle.dump(val_accuracy_hist, f, pickle.HIGHEST_PROTOCOL)
 
-    with open('vlh.pickle', 'wb') as f:
+    with open('fcn_loss.pickle', 'wb') as f:
         pickle.dump(val_loss_hist, f, pickle.HIGHEST_PROTOCOL)
 
 
