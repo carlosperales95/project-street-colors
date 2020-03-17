@@ -9,13 +9,13 @@ import sklearn.model_selection
 import matplotlib
 matplotlib.use('tkagg')
 import matplotlib.pyplot as plt
-from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, Dense, BatchNormalization, Activation, Reshape, Concatenate
+from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, Dense, BatchNormalization, Activation, Reshape, Concatenate, SeparableConv2D, Add, AvgPool2D, Dropout
 from tensorflow_addons.layers import InstanceNormalization
 from tensorflow.keras.models import Model
 from keras import optimizers
 #from layers import GroupNormalization, InstanceNormalization
 #from layers import MaxPoolingWithArgmax2D, MaxUnpooling2D
-from tensorflow.compat.v1.nn import max_pool_with_argmax as MaxPoolingWithArgmax2D
+from tensorflow.compat.v1.nn import separable_conv2d
 import pickle
 import random
 #from sklearn.metrics import roc_auc_score
@@ -42,10 +42,10 @@ tf.config.experimental.set_memory_growth(tf.config.list_physical_devices('GPU')[
 #    return tf.py_func(roc_auc_score, (y_true, y_pred), tf.double)
 
 dataset_dir = '/home/leonardo/Documenti/mapillarydb/'
-weights_dir = 'weights/segnet c'
+weights_dir = 'weights/d121 a'
 img_width = 576 #576
 img_height = 384 #384
-n_epochs = 10
+n_epochs = 15
 runs = 20 #dataset subdivisions #40
 train_batch = 800 #400
 accuracy_hist = []
@@ -59,115 +59,152 @@ out_valid = []
 
 trainingset = [os.path.splitext(filename)[0] for filename in sorted(os.listdir(dataset_dir+'training/images_lin/'))[:16000]]
 
-images =  Input(shape=(img_width, img_height, 3))
-output_1a = Conv2D(64, (3, 3),  padding='same')(images)
-output_1b = InstanceNormalization()(output_1a)
-output_1 = Activation('relu')(output_1b)
-output_2a = Conv2D(64, (3, 3),  padding='same')(output_1)
-output_2b = InstanceNormalization()(output_2a)
-output_2 = Activation('relu')(output_2b)
-output_3 = MaxPooling2D((2, 2))(output_2)
-output_4a = Conv2D(128, (3, 3),  padding='same')(output_3)
-output_4b = InstanceNormalization()(output_4a)
-output_4 = Activation('relu')(output_4b)
-output_5a = Conv2D(128, (3, 3),  padding='same')(output_4)
-output_5b = InstanceNormalization()(output_5a)
-output_5 = Activation('relu')(output_5b)
-output_6 = MaxPooling2D((2, 2))(output_5)
-output_7a = Conv2D(256, (3, 3),  padding='same')(output_6)
-output_7b = InstanceNormalization()(output_7a)
-output_7 = Activation('relu')(output_7b)
-output_8a = Conv2D(256, (3, 3),  padding='same')(output_7)
-output_8b = InstanceNormalization()(output_8a)
-output_8 = Activation('relu')(output_8b)
-output_9a = Conv2D(256, (3, 3),  padding='same')(output_8)
-output_9b = InstanceNormalization()(output_9a)
-output_9 = Activation('relu')(output_9b)
-output_10 = MaxPooling2D((2, 2))(output_9)
-output_11a = Conv2D(512, (3, 3),  padding='same')(output_10)
-output_11b = InstanceNormalization()(output_11a)
-output_11 = Activation('relu')(output_11b)
-output_12a = Conv2D(512, (3, 3),  padding='same')(output_11)
-output_12b = InstanceNormalization()(output_12a)
-output_12 = Activation('relu')(output_12b)
-output_13a = Conv2D(512, (3, 3),  padding='same')(output_12)
-output_13b = InstanceNormalization()(output_13a)
-output_13 = Activation('relu')(output_13b)
-output_14 = MaxPooling2D((2, 2))(output_13)
-output_15a = Conv2D(512, (3, 3),  padding='same')(output_14)
-output_15b = InstanceNormalization()(output_15a)
-output_15 = Activation('relu')(output_15b)
-output_16a = Conv2D(512, (3, 3),  padding='same')(output_15)
-output_16b = InstanceNormalization()(output_16a)
-output_16 = Activation('relu')(output_16b)
-output_17a = Conv2D(512, (3, 3),  padding='same')(output_16)
-output_17b = InstanceNormalization()(output_17a)
-output_17 = Activation('relu')(output_17b)
-output_18 = MaxPooling2D((2, 2))(output_17)
+def DenseBlock(input, name, block,bb):
+    db0 = InstanceNormalization()(input)
+    db1 = Activation('relu')(db0)
+    db2 = Conv2D((128),(1,1),padding='same')(db1)
+    db3 = Dropout(0.15)(db2)
+    db4 = InstanceNormalization()(db3)
+    db5 = Activation('relu')(db4)
+    db6 = Conv2D(32,(3,3),padding='same')(db5)
+    db7 = Dropout(0.15)(db6)
+    db8 = Concatenate()([input,db7])
+    return db8
 
-output_19a = Conv2DTranspose(512,kernel_size=(2,2), strides=(2,2), padding='same')(output_18)
-output_19b = InstanceNormalization()(output_19a)
-output_19 = Activation('relu')(output_19b)
-#output_20a = Conv2D(512, (3, 3),  padding='same')(output_19)
-#output_20b = InstanceNormalization()(output_20a)
-#output_20 = Activation('relu')(output_20b)
-output_20 = Concatenate()([output_19,output_17])
-output_21a = Conv2D(512, (3, 3),  padding='same')(output_20)
-output_21b = InstanceNormalization()(output_21a)
-output_21 = Activation('relu')(output_21b)
-output_22a = Conv2D(512, (3, 3),  padding='same')(output_21)
-output_22b = InstanceNormalization()(output_22a)
-output_22 = Activation('relu')(output_22b)
-output_23a = Conv2DTranspose(512,kernel_size=(2,2), strides=(2,2), padding='same')(output_22)
-output_23b = InstanceNormalization()(output_23a)
-output_23 = Activation('relu')(output_23b)
-#output_24a = Conv2D(512, (3, 3),  padding='same')(output_23)
-#output_24b = InstanceNormalization()(output_24a)
-#output_24 = Activation('relu')(output_24b)
-output_24 = Concatenate()([output_23,output_13])
-output_25a = Conv2D(512, (3, 3),  padding='same')(output_24)
-output_25b = InstanceNormalization()(output_25a)
-output_25 = Activation('relu')(output_25b)
-output_26a = Conv2D(512, (3, 3),  padding='same')(output_25)
-output_26b = InstanceNormalization()(output_26a)
-output_26 = Activation('relu')(output_26b)
-output_27a = Conv2DTranspose(256,kernel_size=(2,2), strides=(2,2), padding='same')(output_26)
-output_27b = InstanceNormalization()(output_27a)
-output_27 = Activation('relu')(output_27b)
-#output_28a = Conv2D(256, (3, 3),  padding='same')(output_27)
-#output_28b = InstanceNormalization()(output_28a)
-#output_28 = Activation('relu')(output_28b)
-output_28 = Concatenate()([output_27,output_9])
-output_29a = Conv2D(256, (3, 3),  padding='same')(output_28)
-output_29b = InstanceNormalization()(output_29a)
-output_29 = Activation('relu')(output_29b)
-output_30a = Conv2D(256, (3, 3),  padding='same')(output_29)
-output_30b = InstanceNormalization()(output_30a)
-output_30 = Activation('relu')(output_30b)
-output_31a = Conv2DTranspose(128,kernel_size=(2,2), strides=(2,2), padding='same')(output_30)
-output_31b = InstanceNormalization()(output_31a)
-output_31 = Activation('relu')(output_31b)
-#output_32a = Conv2D(128, (3, 3),  padding='same')(output_31)
-#output_32b = InstanceNormalization()(output_32a)
-#output_32 = Activation('relu')(output_32b)
-output_32 = Concatenate()([output_31,output_5])
-output_33a = Conv2D(128, (3, 3),  padding='same')(output_32)
-output_33b = InstanceNormalization()(output_33a)
-output_33 = Activation('relu')(output_33b)
-output_34a = Conv2DTranspose(64,kernel_size=(2,2), strides=(2,2), padding='same')(output_33)
-output_34b = InstanceNormalization()(output_34a)
-output_34 = Activation('relu')(output_34b)
-#output_35a = Conv2D(64, (3, 3),  padding='same')(output_34)
-#output_35b = InstanceNormalization()(output_35a)
-#output_35 = Activation('relu')(output_35b)
-output_35 = Concatenate()([output_34,output_2])
-output_36a = Conv2D(39, (1, 1),  padding='same')(output_35)
-output_36b = InstanceNormalization()(output_36a)
-predictions = Activation('softmax')(output_36a)
+def Transition(input, name, block):
+    t0 = InstanceNormalization()(input)
+    t1 = Activation('relu')(t0)
+    t2 = Conv2D((128*(2**block)),(1,1),padding='same')(t1)
+    t3 = Dropout(0.15)(t2)
+    t4 = AvgPool2D((2,2),strides=2)(t3)
+    return t4
 
-model = Model(inputs=images, outputs=predictions)
+l000 = Input(shape=(img_width, img_height, 3))
 
-HRVSProp=keras.optimizers.Adam(learning_rate=0.0001)
+l011 = Conv2D(64,(7,7),strides=2,padding='same')(l000)
+l012 = MaxPooling2D((3,3),strides=2,padding='same')(l011)
+
+l021 = DenseBlock(l011,'db1',0,0)
+l022 = DenseBlock(l021,'db2',1,0)
+l023 = DenseBlock(l022,'db3',2,0)
+l024 = DenseBlock(l023,'db4',3,0)
+l025 = DenseBlock(l024,'db5',4,0)
+l026 = DenseBlock(l025,'db6',5,0)
+
+l031 = Transition(l026,'t1',0)
+
+l041 = DenseBlock(l031,'db7',0,1)
+l042 = DenseBlock(l041,'db8',1,1)
+l043 = DenseBlock(l042,'db9',2,1)
+l044 = DenseBlock(l043,'db10',3,1)
+l045 = DenseBlock(l044,'db11',4,1)
+l046 = DenseBlock(l045,'db12',5,1)
+l047 = DenseBlock(l046,'db13',6,1)
+l048 = DenseBlock(l047,'db14',7,1)
+l049 = DenseBlock(l048,'db15',8,1)
+l050 = DenseBlock(l049,'db16',9,1)
+l051 = DenseBlock(l050,'db17',10,1)
+l052 = DenseBlock(l051,'db18',11,1)
+
+l061 = Transition(l052,'t2',1)
+
+l071 = DenseBlock(l061,'db19',0,2)
+l072 = DenseBlock(l071,'db20',1,2)
+l073 = DenseBlock(l072,'db21',2,2)
+l074 = DenseBlock(l073,'db22',3,2)
+l075 = DenseBlock(l074,'db23',4,2)
+l076 = DenseBlock(l075,'db24',5,2)
+l077 = DenseBlock(l076,'db25',6,2)
+l078 = DenseBlock(l077,'db26',7,2)
+l079 = DenseBlock(l078,'db27',8,2)
+l080 = DenseBlock(l079,'db28',9,2)
+l081 = DenseBlock(l080,'db29',10,2)
+l082 = DenseBlock(l081,'db30',11,2)
+l091 = DenseBlock(l082,'db31',12,2)
+l092 = DenseBlock(l091,'db32',13,2)
+l093 = DenseBlock(l092,'db33',14,2)
+l094 = DenseBlock(l093,'db34',15,2)
+l095 = DenseBlock(l094,'db35',16,2)
+l096 = DenseBlock(l095,'db36',17,2)
+l097 = DenseBlock(l096,'db37',18,2)
+l098 = DenseBlock(l097,'db38',19,2)
+l099 = DenseBlock(l098,'db39',20,2)
+l100 = DenseBlock(l099,'db40',21,2)
+l101 = DenseBlock(l100,'db41',22,2)
+l102 = DenseBlock(l101,'db42',23,2)
+
+l111 = Transition(l102,'t3',2)
+
+l121 = DenseBlock(l111,'db43',0,3)
+l122 = DenseBlock(l121,'db44',1,3)
+l123 = DenseBlock(l122,'db45',2,3)
+l124 = DenseBlock(l123,'db46',3,3)
+l125 = DenseBlock(l124,'db47',4,3)
+l126 = DenseBlock(l125,'db48',5,3)
+l127 = DenseBlock(l126,'db49',6,3)
+l128 = DenseBlock(l127,'db50',7,3)
+l129 = DenseBlock(l128,'db51',8,3)
+l130 = DenseBlock(l129,'db52',9,3)
+l131 = DenseBlock(l130,'db53',10,3)
+l132 = DenseBlock(l131,'db54',11,3)
+l141 = DenseBlock(l132,'db55',12,3)
+l142 = DenseBlock(l141,'db56',13,3)
+l143 = DenseBlock(l142,'db57',14,3)
+l144 = DenseBlock(l143,'db58',15,3)
+
+d011 = Conv2D(512,(1,1),padding='same')(l102)
+d012 = InstanceNormalization()(d011)
+d013 = Activation('relu')(d012)
+d013d = Dropout(0.15)(d013)
+d014 = Conv2DTranspose(512,kernel_size=(2,2), strides=(2,2), padding='same')(l144)
+d015 = InstanceNormalization()(d014)
+d016 = Activation('relu')(d015)
+d016d = Dropout(0.15)(d016)
+d010 = Add()([d016d,d013d])
+
+d021 = Conv2D(256,(1,1),padding='same')(l052)
+d022 = InstanceNormalization()(d021)
+d023 = Activation('relu')(d022)
+d023d = Dropout(0.15)(d023)
+d024 = Conv2DTranspose(256,kernel_size=(2,2), strides=(2,2), padding='same')(d010)
+d025 = InstanceNormalization()(d024)
+d026 = Activation('relu')(d025)
+d026d = Dropout(0.15)(d026)
+d020 = Add()([d026d,d023d])
+
+d031 = Conv2D(128,(1,1),padding='same')(l026)
+d032 = InstanceNormalization()(d031)
+d033 = Activation('relu')(d032)
+d033d = Dropout(0.15)(d033)
+d034 = Conv2DTranspose(128,kernel_size=(2,2), strides=(2,2), padding='same')(d020)
+d035 = InstanceNormalization()(d034)
+d036 = Activation('relu')(d035)
+d036d = Dropout(0.15)(d036)
+d030 = Add()([d036d,d033d])
+
+d041 = Conv2D(64,(1,1),padding='same')(l000)
+d042 = InstanceNormalization()(d041)
+d043 = Activation('relu')(d042)
+d043d = Dropout(0.15)(d043)
+d044 = Conv2DTranspose(64,kernel_size=(2,2), strides=(2,2), padding='same')(d030)
+d045 = InstanceNormalization()(d044)
+d046 = Activation('relu')(d045)
+d046d = Dropout(0.15)(d046)
+d040 = Add()([d046d,d043d])
+
+#l999 = Activation('softmax')(l251)
+
+d997 = Dense(39)(d040)
+d998 = InstanceNormalization()(d997)
+
+#l151 = AvgPool2D((7,7),strides=7,padding='same')(l144)
+#l152 = Dense(39)(l151)
+
+d999 = Activation('softmax')(d998)
+
+model = Model(inputs=l000, outputs=d999)
+
+HRVSProp=keras.optimizers.Adam(learning_rate=0.001)
 
 model.compile(optimizer=HRVSProp,loss='sparse_categorical_crossentropy',metrics=['accuracy'])
 #sparse categorical is ok for output where 1 class is true and the others are false
@@ -179,7 +216,7 @@ model.summary()
 
 #model.save_weights('default.h5')
 #model.load_weights('default.h5')
-model.load_weights('weights/segnet c14.tf')
+model.load_weights('weights/d121 a21.tf')
 
 def LabelCompact(image_label,class_from,class_to):
     class_matches = (image_label[ :, :, 0] == class_from)
@@ -230,6 +267,12 @@ with open('snf_acc.pickle', 'rb') as f:
 with open('snf_loss.pickle', 'rb') as f:
     val_loss_hist = pickle.load(f)
 
+with open('snf_acc.pickle', 'rb') as f:
+    accuracy_hist = pickle.load(f)
+
+with open('snf_loss.pickle', 'rb') as f:
+    loss_hist = pickle.load(f)
+
 in_valid, out_valid = ImportValidation()
 
 for epochs in range(n_epochs):
@@ -270,10 +313,10 @@ for epochs in range(n_epochs):
         in_train = np.array([x for x in in_train])
         out_train = np.array([x for x in out_train])
 
-        modelzero = model.fit(in_train, out_train, epochs=1, batch_size=1, validation_data=[in_valid,out_valid])
+        modelzero = model.fit(in_train, out_train, epochs=1, batch_size=1)
 
-        val_accuracy_hist += modelzero.history['val_accuracy']
-        val_loss_hist += modelzero.history['val_loss']
+        #val_accuracy_hist += modelzero.history['val_accuracy']
+        #val_loss_hist += modelzero.history['val_loss']
 
         accuracy_hist += modelzero.history['accuracy']
         loss_hist += modelzero.history['loss']
@@ -282,12 +325,12 @@ for epochs in range(n_epochs):
     if in_valid==[]:
         in_valid, out_valid = ImportValidation()
 
-    #val_loss, val_accuracy = model.evaluate(in_valid, out_valid, batch_size=1, verbose=1)
+    val_loss, val_accuracy = model.evaluate(in_valid, out_valid, batch_size=1, verbose=1)
 
     #val_accuracy_hist += modelzero.history['val_accuracy']
     #val_loss_hist += modelzero.history['val_loss']
-    #val_accuracy_hist += [val_accuracy]
-    #val_loss_hist += [val_loss]
+    val_accuracy_hist += [val_accuracy]
+    val_loss_hist += [val_loss]
 
     #print(val_loss, val_accuracy)
 
@@ -298,20 +341,25 @@ for epochs in range(n_epochs):
     #if val_loss==min(val_loss_hist):
     #    model.save_weights('segnet.h5')
 
-    with open('snf_acc.pickle', 'wb') as f:
+    with open('s121a_val_acc.pickle', 'wb') as f:
         pickle.dump(val_accuracy_hist, f, pickle.HIGHEST_PROTOCOL)
 
-    with open('snf_loss.pickle', 'wb') as f:
+    with open('s121a_val_loss.pickle', 'wb') as f:
         pickle.dump(val_loss_hist, f, pickle.HIGHEST_PROTOCOL)
 
+    with open('s121a_acc.pickle', 'wb') as f:
+        pickle.dump(accuracy_hist, f, pickle.HIGHEST_PROTOCOL)
 
-plt.plot(accuracy_hist, label='accuracy')
+    with open('s121a_loss.pickle', 'wb') as f:
+        pickle.dump(loss_hist, f, pickle.HIGHEST_PROTOCOL)
+
+
+plt.plot(val_loss_hist, label='val_loss')
 plt.plot(val_accuracy_hist, label = 'val_accuracy')
-plt.plot(val_loss_hist, label= 'val_loss')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 #plt.ylim([0.0, 1])
-plt.legend(loc='upper right')
+plt.legend(loc='lower left')
 plt.show()
 
 in_test = []
@@ -345,7 +393,8 @@ print(test_loss, test_acc)
 test_accuracy_hist += [test_acc]
 test_loss_hist += [test_loss]
 
-model.load_weights('segnet g4.tf')
+model.save_weights(weights_dir +'init.tf')
+model.load_weights(weights_dir +'init.tf')
 
 np.mean(accuracy_hist)
 
